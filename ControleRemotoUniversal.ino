@@ -154,40 +154,58 @@ void loop() {
   // Verifica se há entrada no Serial Monitor
   if (Serial.available() > 0) {
     char comando = Serial.read();
-    switch (comando) {
-      case 'P':
-        if (!modoGravacao) { // Envia sinal apenas se não estiver no modo de gravação
+    Serial.print("Comando recebido: ");
+    Serial.println(comando);
+
+    if (comando == 'P') {
+      if (!modoGravacao) {
+        Serial.println("Modo de gravação desativado. Enviando sinal IR.");
+
+        // Envia o sinal apropriado com base no tipo de controle
+        if (tipoControle == "NEC") {
           if (isCodeInArray(codigoLGNEC[0], codigoLGNEC, sizeof(codigoLGNEC) / sizeof(codigoLGNEC[0]))) {
             sendNECTV(codigoLGNEC[0]);
-          } else if (isCodeInArray(codigosSony[0], codigosSony, sizeof(codigosSony) / sizeof(codigosSony[0]))) {
+          } else {
+            Serial.println("Código NEC para ligar a TV não encontrado.");
+          }
+        } else if (tipoControle == "SONY") {
+          if (isCodeInArray(codigosSony[0], codigosSony, sizeof(codigosSony) / sizeof(codigosSony[0]))) {
             sendSonyTV(codigosSony[0]);
-          } else if (isCodeInArray(codigosPanasonic[0], codigosPanasonic, sizeof(codigosPanasonic) / sizeof(codigosPanasonic[0]))) {
+          } else {
+            Serial.println("Código SONY para ligar a TV não encontrado.");
+          }
+        } else if (tipoControle == "PANASONIC") {
+          if (isCodeInArray(codigosPanasonic[0], codigosPanasonic, sizeof(codigosPanasonic) / sizeof(codigosPanasonic[0]))) {
             sendPanasonicTV(panasonicAddress, codigosPanasonic[0]);
           } else {
-            Serial.println("Código para ligar a TV não encontrado.");
+            Serial.println("Código PANASONIC para ligar a TV não encontrado.");
           }
         } else {
-          Serial.println("Modo de gravação ativado. Não é possível enviar sinais IR.");
+          Serial.println("Tipo de controle desconhecido para enviar sinal.");
         }
-        break;
-      
-      default:
-        Serial.println("Comando não reconhecido.");
-        Serial.print("Tipo Controle: ");
-        Serial.println(tipoControle);
-        break;
+      } else {
+        Serial.println("Modo de gravação ativado. Não é possível enviar sinais IR.");
+      }
+    } else {
+      Serial.println("Comando não reconhecido.");
     }
   }
 }
 
 void sendNECTV(unsigned long codigoNEC) {
+  Serial.print("Enviando código NEC: ");
+  Serial.println(codigoNEC, HEX);
   irsend.sendNEC(codigoNEC, 32);
 }
 
 void sendSonyTV(unsigned long codigoSony) {
+  Serial.print("Enviando código SONY: ");
+  Serial.println(codigoSony, HEX);
   irsend.sendSony(codigoSony, 12); // Ajuste o número de bits se necessário
 }
 
 void sendPanasonicTV(unsigned long address, unsigned long codigoPanasonic) {
+  Serial.print("Enviando código PANASONIC: ");
+  Serial.println(codigoPanasonic, HEX);
   irsend.sendPanasonic(address, codigoPanasonic);
 }
