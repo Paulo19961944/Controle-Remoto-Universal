@@ -8,6 +8,7 @@ byte pinLed = 13;
 
 // VARIÁVEIS GLOBAIS
 String tipoControle = "";
+bool modoGravacao = false;  // Modo de Gravação
 
 // CÓDIGO INICIAL PANASONIC
 unsigned long panasonicAddress = 0x4004;
@@ -20,7 +21,7 @@ unsigned long codigoGenerico[] = {0x00FEA857, 0x00FE00FF, 0x00FE807F, 0x00FE40BF
 
 IRrecv irrecv(RECV_PIN);  // Inicializa o Objeto IRReceiver
 IRsend irsend;            // Inicializa o Sender
-decode_results results;  // Decodifica o Resultado
+decode_results results;   // Decodifica o Resultado
 
 void setup() {
   Serial.begin(9600);                // Inicializa o Serial Monitor
@@ -111,14 +112,11 @@ void enviarSinalIR(byte index) {
 }
 
 void loop() {
-  // VARIAVEL PARA LER BOTAO
+  // VARIÁVEIS PARA BOTÃO E DEBOUNCE
   byte leituraBotao = digitalRead(buttonPin);
-  
-  // VARIAVEIS LOCAL
-  bool modoGravacao = false;           // Modo de Gravação
-  bool estadoBotaoAnterior = HIGH;     // Estado anterior do botão
-  unsigned int lastDebounceTime = 0;  // Tempo da última mudança de estado
-  byte debounceDelay = 1;     // Delay para debouncing (ajustado para 1ms)
+  static bool estadoBotaoAnterior = HIGH;
+  static unsigned int lastDebounceTime = 0;
+  byte debounceDelay = 1; // Ajuste de 1ms
 
   // Verifica se o botão mudou de estado
   if (leituraBotao != estadoBotaoAnterior) {
@@ -143,8 +141,8 @@ void loop() {
 
   estadoBotaoAnterior = leituraBotao;
 
-  // Captura sinais IR independentemente do modo de gravação
-  if (irrecv.decode(&results)) {
+  // Captura sinais IR apenas se o modo de gravação estiver ativado
+  if (modoGravacao && irrecv.decode(&results)) {
     Serial.println(results.value, HEX);
     dump(&results);
     
@@ -180,8 +178,8 @@ void loop() {
     irrecv.resume();  // Recebe o próximo valor
   }
 
-  // Verifica se há entrada no Serial Monitor
-  if (Serial.available() > 0) {
+  // Verifica se há entrada no Serial Monitor e não está no modo de gravação
+  if (Serial.available() > 0 && !modoGravacao) {
     char comando = Serial.read();
     Serial.print("Comando recebido: ");
     Serial.println(comando);
@@ -210,12 +208,8 @@ void loop() {
     }
 
     if (index != -1) {
-      if (!modoGravacao) {
-        Serial.println("Modo de gravação desativado. Enviando sinal IR.");
-        enviarSinalIR(index);  // Chama a função para enviar o sinal IR
-      } else {
-        Serial.println("Modo de gravação ativado. Não é possível enviar sinais IR.");
-      }
+      Serial.println("Modo de gravação desativado. Enviando sinal IR.");
+      enviarSinalIR(index);  // Chama a função para enviar o sinal IR
     }
   }
 }
