@@ -1,3 +1,4 @@
+// INCLUSÃO DE BIBLIOTECAS
 #include <IRremote.h>
 
 // DEFINIÇÃO DE PINOS
@@ -6,10 +7,6 @@ byte buttonPin = 7;
 byte pinLed = 13;
 
 // VARIÁVEIS GLOBAIS
-bool modoGravacao = false;           // Modo de Gravação
-bool estadoBotaoAnterior = HIGH;     // Estado anterior do botão
-unsigned long lastDebounceTime = 0;  // Tempo da última mudança de estado
-unsigned long debounceDelay = 1;     // Delay para debouncing (ajustado para 1ms)
 String tipoControle = "";
 
 // CÓDIGO INICIAL PANASONIC
@@ -22,7 +19,7 @@ unsigned long codigoLGNEC[] = {0x20DF10EF, 0x20DF08F7, 0x20DF8877, 0x20DF48B7, 0
 unsigned long codigoGenerico[] = {0x00FEA857, 0x00FE00FF, 0x00FE807F, 0x00FE40BF, 0x00FEC03F, 0x00FE20DF, 0x00FEA05F, 0x00FE609F, 0x00FEE01F, 0x00FE10EF, 0x00FE906F, 0x00FED827, 0x00FE58A7, 0x00FE9867, 0x00FE18E7, 0x00FE18E7};
 
 IRrecv irrecv(RECV_PIN);  // Inicializa o Objeto IRReceiver
-IRsend irsend;
+IRsend irsend;            // Inicializa o Sender
 decode_results results;  // Decodifica o Resultado
 
 void setup() {
@@ -32,6 +29,7 @@ void setup() {
   irrecv.enableIRIn();               // Inicia o receptor IR
 }
 
+// VERIFICA O PROTOCOLO DO CONTROLE
 void dump(decode_results *results) {
   int count = results->rawlen;
   if (results->decode_type == UNKNOWN) {
@@ -71,8 +69,9 @@ void dump(decode_results *results) {
   Serial.println();
 }
 
-bool isCodeInArray(unsigned long code, unsigned long array[], int size) {
-  for (int i = 0; i < size; i++) {
+// VALIDA A ARRAY
+bool isCodeInArray(unsigned long code, unsigned long array[], byte size) {
+  for (byte i = 0; i < size; i++) {
     if (array[i] == code) {
       return true;
     }
@@ -80,7 +79,8 @@ bool isCodeInArray(unsigned long code, unsigned long array[], int size) {
   return false;
 }
 
-void enviarSinalIR(int index) {
+// ENVIA O SINAL DO CONTROLE
+void enviarSinalIR(byte index) {
   if (index < 0 || index > 14) {
     Serial.println("Índice fora do intervalo.");
     return;
@@ -111,7 +111,14 @@ void enviarSinalIR(int index) {
 }
 
 void loop() {
-  int leituraBotao = digitalRead(buttonPin);
+  // VARIAVEL PARA LER BOTAO
+  byte leituraBotao = digitalRead(buttonPin);
+  
+  // VARIAVEIS LOCAL
+  bool modoGravacao = false;           // Modo de Gravação
+  bool estadoBotaoAnterior = HIGH;     // Estado anterior do botão
+  unsigned int lastDebounceTime = 0;  // Tempo da última mudança de estado
+  byte debounceDelay = 1;     // Delay para debouncing (ajustado para 1ms)
 
   // Verifica se o botão mudou de estado
   if (leituraBotao != estadoBotaoAnterior) {
@@ -179,7 +186,7 @@ void loop() {
     Serial.print("Comando recebido: ");
     Serial.println(comando);
 
-    int index = -1;
+    byte index = -1;
     switch (comando) {
       case 'P': index = 0; break;
       case '0': index = 1; break;
@@ -213,18 +220,21 @@ void loop() {
   }
 }
 
+// ENVIA PROTOCOLO NEC
 void sendNECTV(unsigned long codigoNEC) {
   Serial.print("Enviando código NEC: ");
   Serial.println(codigoNEC, HEX);
   irsend.sendNEC(codigoNEC, 32);
 }
 
+// ENVIA PROTOCOLO SONY
 void sendSonyTV(unsigned long codigoSony) {
   Serial.print("Enviando código SONY: ");
   Serial.println(codigoSony, HEX);
   irsend.sendSony(codigoSony, 12); // Ajuste o número de bits se necessário
 }
 
+// ENVIA PROTOCOLO PANASONIC
 void sendPanasonicTV(unsigned long address, unsigned long codigoPanasonic) {
   Serial.print("Enviando código PANASONIC: ");
   Serial.println(codigoPanasonic, HEX);
