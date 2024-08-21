@@ -8,15 +8,61 @@ byte pinLed = 13;
 
 // VARIÁVEIS GLOBAIS
 String tipoControle = "";
+String marcaControle = "";
 bool modoGravacao = false;  // Modo de Gravação
 
 // CÓDIGO INICIAL PANASONIC
 unsigned long panasonicAddress = 0x4004;
 
+/**
+-----------------CODIGOS CONTROLE---------------------
+------------------------------------------------------
+[0] -> On/Off
+[1] -> 0
+[2] -> 1
+[3] -> 2
+[4] -> 3
+[5] -> 4
+[6] -> 5
+[7] -> 6
+[8] -> 7
+[9] -> 8
+[10] -> 9
+[11] -> Vol+
+[12] -> Vol-
+[13] -> CH+
+[14] -> CH-
+[15] -> Mute
+-------------------------------------------------------
+---------------------SONY/SAMSUNG----------------------
+-------------------------------------------------------
+[0] -> On
+[1] -> Off
+[2] -> 0
+[3] -> 1
+[4] -> 2
+[5] -> 3
+[6] -> 4
+[7] -> 5
+[8] -> 6
+[9] -> 7
+[10] -> 8
+[11] -> 9
+[12] -> Vol+
+[13] -> Vol-
+[14] -> CH+
+[15] -> CH-
+[16] -> Mute
+-------------------------------------------------------
+------------------------FIM----------------------------
+-------------------------------------------------------
+*/
+
 /* CODIGOS HEXADECIMAIS DO CONTROLE */
 unsigned long codigosPanasonic[] = {0x100BCBD, 0x1009899, 0x100080, 0x1008889, 0x1004849, 0x100C8C9, 0x1002829, 0x100A8A9, 0x1006869, 0x100E8E9, 0x1001819, 0x1000405, 0x1008485, 0x1002C2D, 0x100ACAD, 0x1004C4D};
 unsigned long codigosSony[] = {0x750, 0xF50, 0x110, 0x010, 0x810, 0x410, 0xC10, 0x210, 0xA10, 0x610, 0xE10, 0x110, 0x490, 0xC90, 0x090, 0x890, 0x290};
-unsigned long codigoLGNEC[] = {0x20DF10EF, 0x20DF08F7, 0x20DF8877, 0x20DF48B7, 0x20DFC837, 0x20DF28D7, 0x20DFA857, 0x20DF6897, 0x20DFE817, 0x20DF18E7, 0x20DF9867, 0x20DF40BF, 0x20DFC03F, 0x20DF00FF, 0x20DF807F};
+unsigned long codigosSamsung[] = {0xE0E09966, 0xE0E019E6, 0xE0E0E8877, 0xE0E020DF, 0xE0E0A05F, 0xE0E0609F, 0xE0E010EF, 0xE0E0906F, 0xE0E050AF, 0xE0E030CF, 0xE0E0B04F, 0xE0E0808F, 0xE0E0E01F, 0xE0E0D02F, 0xE0E048B7, 0xE0E008F7, 0xE0E0F00F};
+unsigned long codigoLGNEC[] = {0x20DF10EF, 0x20DF08F7, 0x20DF8877, 0x20DF48B7, 0x20DFC837, 0x20DF28D7, 0x20DFA857, 0x20DF6897, 0x20DFE817, 0x20DF18E7, 0x20DF9867, 0x20DF40BF, 0x20DFC03F, 0x20DF00FF, 0x20DF807F, 0x20DF906F};
 unsigned long codigoGenerico[] = {0x00FEA857, 0x00FE00FF, 0x00FE807F, 0x00FE40BF, 0x00FEC03F, 0x00FE20DF, 0x00FEA05F, 0x00FE609F, 0x00FEE01F, 0x00FE10EF, 0x00FE906F, 0x00FED827, 0x00FE58A7, 0x00FE9867, 0x00FE18E7, 0x00FE18E7};
 
 IRrecv irrecv(RECV_PIN);  // Inicializa o Objeto IRReceiver
@@ -82,7 +128,7 @@ bool isCodeInArray(unsigned long code, unsigned long array[], byte size) {
 
 // ENVIA O SINAL DO CONTROLE
 void enviarSinalIR(byte index) {
-  if (index < 0 || index > 14) {
+  if (index < 0 || index > 16) {
     Serial.println("Índice fora do intervalo.");
     return;
   }
@@ -91,6 +137,10 @@ void enviarSinalIR(byte index) {
   if (tipoControle == "NEC") {
     if (isCodeInArray(codigoLGNEC[index], codigoLGNEC, sizeof(codigoLGNEC) / sizeof(codigoLGNEC[0]))) {
       sendNECTV(codigoLGNEC[index]);
+    } else if(isCodeInArray(codigoGenerico[index], codigoGenerico, sizeof(codigoGenerico) / sizeof(codigoGenerico[0]))){
+       sendNECTV(codigoGenerico[index]);
+    } else if(isCodeInArray(codigosSamsung[index], codigosSamsung, sizeof(codigosSamsung) / sizeof(codigosSamsung[0]))){
+       sendNECTV(codigosSamsung);
     } else {
       Serial.println("Código NEC não encontrado.");
     }
@@ -116,17 +166,15 @@ void loop() {
   byte leituraBotao = digitalRead(buttonPin);
   static bool estadoBotaoAnterior = HIGH;
   static unsigned int lastDebounceTime = 0;
-  byte debounceDelay = 1; // Ajuste de 1ms
+  byte debounceDelay = 50; // Ajuste de 50ms
 
   // Verifica se o botão mudou de estado
   if (leituraBotao != estadoBotaoAnterior) {
     lastDebounceTime = millis();  // Reinicia o tempo de debounce
-    Serial.print("Botão mudou para: ");
-    Serial.println(leituraBotao == LOW ? "PRESSIONADO" : "LIBERADO");
   }
 
   // Verifica se o debounce delay passou
-  if ((millis() - lastDebounceTime) > debounceDelay) {
+  if ((millis() - lastDebounceTime) <= debounceDelay) {
     // Ativa/desativa o modo de gravação quando o botão é pressionado
     if (leituraBotao == LOW && estadoBotaoAnterior == HIGH) {
       modoGravacao = !modoGravacao;  // Alterna o estado do modo de gravação
@@ -153,19 +201,27 @@ void loop() {
       if (isCodeInArray(codigoCapturado, codigoLGNEC, sizeof(codigoLGNEC) / sizeof(codigoLGNEC[0]))) {
         Serial.println("Código NEC encontrado.");
         encontrado = true;
+        marcaControle = "LG";
       } else if (isCodeInArray(codigoCapturado, codigoGenerico, sizeof(codigoGenerico) / sizeof(codigoGenerico[0]))) {
         Serial.println("Código GENÉRICO encontrado.");
         encontrado = true;
+        marcaControle = "GENERICO";
+      } else if (isCodeInArray(codigoCapturado, codigosSamsung, sizeof(codigosSamsung)/ sizeof(codigosSamsung[0]))) {
+        Serial.println("Código SAMSUNG encontrado.");
+        encontrado = true;
+        marcaControle = "SAMSUNG";
       }
     } else if (tipoControle == "SONY") {
       if (isCodeInArray(codigoCapturado, codigosSony, sizeof(codigosSony) / sizeof(codigosSony[0]))) {
         Serial.println("Código SONY encontrado.");
         encontrado = true;
+        marcaControle = "SONY";
       }
     } else if (tipoControle == "PANASONIC") {
       if (isCodeInArray(codigoCapturado, codigosPanasonic, sizeof(codigosPanasonic) / sizeof(codigosPanasonic[0]))) {
         Serial.println("Código PANASONIC encontrado.");
         encontrado = true;
+        marcaControle = "PANASONIC";
       }
     } else {
       Serial.println("Tipo de controle desconhecido.");
@@ -185,7 +241,9 @@ void loop() {
     Serial.println(comando);
 
     byte index = -1;
-    switch (comando) {
+
+    if(marcaControle != "SONY" || marcaControle != "SAMSUNG"){
+      switch (comando) {
       case 'P': index = 0; break;
       case '0': index = 1; break;
       case '1': index = 2; break;
@@ -205,6 +263,27 @@ void loop() {
       default:
         Serial.println("Comando não reconhecido.");
         break;
+      }
+    } else{
+      switch(comando){
+        case 'O': index = 0; break;
+      case 'F': index = 1; break;
+      case '0': index = 2; break;
+      case '1': index = 3; break;
+      case '2': index = 4; break;
+      case '3': index = 5; break;
+      case '4': index = 6; break;
+      case '5': index = 7; break;
+      case '6': index = 8; break;
+      case '7': index = 9; break;
+      case '8': index = 10; break;
+      case '9': index = 11; break;
+      case '+': index = 12; break;
+      case '-': index = 13; break;
+      case 'W': index = 14; break;
+      case 'S': index = 15; break;
+      case 'M': index = 16; break;
+      }
     }
 
     if (index != -1) {
